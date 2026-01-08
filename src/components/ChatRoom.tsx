@@ -73,11 +73,11 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
   }, [supabase])
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
+    <div className="flex flex-col h-dvh bg-gray-100">
       <ChatHeader username={currentUser.username} />
 
       {/* メッセージ一覧 */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 min-h-0">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-500">
             メッセージはまだありません
