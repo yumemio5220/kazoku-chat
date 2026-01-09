@@ -22,7 +22,7 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  // メッセージを再取得する関数
+  // メッセージを再取得する関数（既存メッセージとマージして競合を防ぐ）
   const fetchMessages = useCallback(async () => {
     const { data, error } = await supabase
       .from('messages')
@@ -37,8 +37,22 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
       return
     }
 
-    if (data) {
-      setMessages(data as MessageWithProfile[])
+    if (data && data.length > 0) {
+      setMessages((prevMessages) => {
+        // IDをキーにしたMapでマージ（新しいデータを優先）
+        const messageMap = new Map<string, MessageWithProfile>()
+
+        // 既存メッセージを追加
+        prevMessages.forEach((msg) => messageMap.set(msg.id, msg))
+
+        // 新しいデータで上書き・追加
+        data.forEach((msg) => messageMap.set(msg.id, msg as MessageWithProfile))
+
+        // created_at順にソートして返す
+        return Array.from(messageMap.values()).sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        )
+      })
     }
   }, [supabase])
 
@@ -95,7 +109,13 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
               ...payload.new as MessageWithProfile,
               profiles: profile,
             }
-            setMessages((prev) => [...prev, newMessage])
+            // 重複防止: 既に存在するメッセージは追加しない
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === newMessage.id)) {
+                return prev
+              }
+              return [...prev, newMessage]
+            })
           }
         }
       )
