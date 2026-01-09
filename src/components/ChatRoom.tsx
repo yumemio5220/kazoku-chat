@@ -141,6 +141,8 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
 
   // オンラインユーザーのPresence
   useEffect(() => {
+    let visibilityTimeoutId: NodeJS.Timeout | null = null
+
     const presenceChannel = supabase.channel('online-users', {
       config: {
         presence: {
@@ -148,6 +150,34 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
         },
       },
     })
+
+    const trackUser = async () => {
+      try {
+        await presenceChannel.track({
+          userId: currentUser.id,
+          username: currentUser.username,
+        })
+      } catch (error) {
+        console.error('Presence track error:', error, { userId: currentUser.id })
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      // デバウンス: 連続したタブ切り替えによる複数回のtrack/untrackを防ぐ
+      if (visibilityTimeoutId) {
+        clearTimeout(visibilityTimeoutId)
+      }
+
+      visibilityTimeoutId = setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+          // 復帰時にtrackし直す
+          trackUser()
+        } else {
+          // バックグラウンド時にuntrack
+          presenceChannel.untrack()
+        }
+      }, 300)
+    }
 
     presenceChannel
       .on('presence', { event: 'sync' }, () => {
@@ -168,14 +198,17 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await presenceChannel.track({
-            userId: currentUser.id,
-            username: currentUser.username,
-          })
+          await trackUser()
         }
       })
 
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (visibilityTimeoutId) {
+        clearTimeout(visibilityTimeoutId)
+      }
       presenceChannel.untrack()
       supabase.removeChannel(presenceChannel)
     }
