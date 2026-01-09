@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MessageWithProfile, Profile } from '@/types/database'
 import ChatMessage from './ChatMessage'
@@ -15,16 +15,75 @@ type Props = {
 export default function ChatRoom({ initialMessages, currentUser }: Props) {
   const [messages, setMessages] = useState<MessageWithProfile[]>(initialMessages)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   // 自動スクロール
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  // メッセージを再取得する関数（既存メッセージとマージして競合を防ぐ）
+  const fetchMessages = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('messages')
+      .select(`
+        *,
+        profiles (*)
+      `)
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('メッセージ取得エラー:', error)
+      return
+    }
+
+    if (data && data.length > 0) {
+      setMessages((prevMessages) => {
+        // IDをキーにしたMapでマージ（新しいデータを優先）
+        const messageMap = new Map<string, MessageWithProfile>()
+
+        // 既存メッセージを追加
+        prevMessages.forEach((msg) => messageMap.set(msg.id, msg))
+
+        // 新しいデータで上書き・追加
+        data.forEach((msg) => messageMap.set(msg.id, msg as MessageWithProfile))
+
+        // created_at順にソートして返す
+        return Array.from(messageMap.values()).sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        )
+      })
+    }
+  }, [supabase])
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // バックグラウンドから復帰時にメッセージを再取得（デバウンス付き）
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+        }
+        timeoutId = setTimeout(() => {
+          fetchMessages()
+        }, 300)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
+  }, [fetchMessages])
 
   // リアルタイム購読
   useEffect(() => {
@@ -50,7 +109,13 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
               ...payload.new as MessageWithProfile,
               profiles: profile,
             }
-            setMessages((prev) => [...prev, newMessage])
+            // 重複防止: 既に存在するメッセージは追加しない
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === newMessage.id)) {
+                return prev
+              }
+              return [...prev, newMessage]
+            })
           }
         }
       )
