@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MessageWithProfile, Profile } from '@/types/database'
 import ChatMessage from './ChatMessage'
@@ -15,7 +15,7 @@ type Props = {
 export default function ChatRoom({ initialMessages, currentUser }: Props) {
   const [messages, setMessages] = useState<MessageWithProfile[]>(initialMessages)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   // 自動スクロール
   const scrollToBottom = () => {
@@ -24,13 +24,18 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
 
   // メッセージを再取得する関数
   const fetchMessages = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('messages')
       .select(`
         *,
         profiles (*)
       `)
       .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('メッセージ取得エラー:', error)
+      return
+    }
 
     if (data) {
       setMessages(data as MessageWithProfile[])
@@ -41,11 +46,18 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
     scrollToBottom()
   }, [messages])
 
-  // バックグラウンドから復帰時にメッセージを再取得
+  // バックグラウンドから復帰時にメッセージを再取得（デバウンス付き）
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        fetchMessages()
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+        }
+        timeoutId = setTimeout(() => {
+          fetchMessages()
+        }, 300)
       }
     }
 
@@ -53,6 +65,9 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
     }
   }, [fetchMessages])
 
