@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { MessageWithProfile, Profile } from '@/types/database'
+import { MessageWithProfile, Profile, OnlineUser, isOnlineUserPresence } from '@/types/database'
 import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
 import ChatHeader from './ChatHeader'
+import OnlineUsers from './OnlineUsers'
 
 type Props = {
   initialMessages: MessageWithProfile[]
@@ -14,6 +15,7 @@ type Props = {
 
 export default function ChatRoom({ initialMessages, currentUser }: Props) {
   const [messages, setMessages] = useState<MessageWithProfile[]>(initialMessages)
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const supabase = useMemo(() => createClient(), [])
 
@@ -137,9 +139,56 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
     }
   }, [supabase])
 
+  // オンラインユーザーのPresence
+  useEffect(() => {
+    const presenceChannel = supabase.channel('online-users', {
+      config: {
+        presence: {
+          key: currentUser.id,
+        },
+      },
+    })
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState()
+        const users: OnlineUser[] = []
+
+        Object.keys(state).forEach((key) => {
+          const presences = state[key]
+          if (presences.length > 0 && isOnlineUserPresence(presences[0])) {
+            users.push({
+              userId: presences[0].userId,
+              username: presences[0].username,
+            })
+          }
+        })
+
+        setOnlineUsers(users)
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({
+            userId: currentUser.id,
+            username: currentUser.username,
+          })
+        }
+      })
+
+    return () => {
+      presenceChannel.untrack()
+      supabase.removeChannel(presenceChannel)
+    }
+  }, [supabase, currentUser.id, currentUser.username])
+
   return (
     <div className="flex flex-col h-dvh bg-gray-100">
       <ChatHeader username={currentUser.username} />
+
+      {/* オンラインユーザー表示 */}
+      <div className="bg-white border-b px-4 py-2">
+        <OnlineUsers users={onlineUsers} currentUserId={currentUser.id} />
+      </div>
 
       {/* メッセージ一覧 */}
       <div className="flex-1 overflow-y-auto p-4 min-h-0">
