@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MessageWithProfile, Profile } from '@/types/database'
 import ChatMessage from './ChatMessage'
@@ -22,9 +22,39 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  // メッセージを再取得する関数
+  const fetchMessages = useCallback(async () => {
+    const { data } = await supabase
+      .from('messages')
+      .select(`
+        *,
+        profiles (*)
+      `)
+      .order('created_at', { ascending: true })
+
+    if (data) {
+      setMessages(data as MessageWithProfile[])
+    }
+  }, [supabase])
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // バックグラウンドから復帰時にメッセージを再取得
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchMessages()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [fetchMessages])
 
   // リアルタイム購読
   useEffect(() => {
