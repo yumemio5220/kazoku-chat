@@ -1,9 +1,7 @@
 'use client'
 
-type OnlineUser = {
-  userId: string
-  username: string
-}
+import { useMemo } from 'react'
+import { OnlineUser } from '@/types/database'
 
 type Props = {
   users: OnlineUser[]
@@ -11,8 +9,11 @@ type Props = {
 }
 
 export default function OnlineUsers({ users, currentUserId }: Props) {
-  // 自分以外のオンラインユーザーをフィルタリング
-  const otherUsers = users.filter((user) => user.userId !== currentUserId)
+  // 自分以外のオンラインユーザーをフィルタリング（メモ化）
+  const otherUsers = useMemo(
+    () => users.filter((user) => user.userId !== currentUserId),
+    [users, currentUserId]
+  )
 
   return (
     <div className="flex items-center gap-2 text-sm">

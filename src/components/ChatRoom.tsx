@@ -2,16 +2,11 @@
 
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { MessageWithProfile, Profile } from '@/types/database'
+import { MessageWithProfile, Profile, OnlineUser, isOnlineUserPresence } from '@/types/database'
 import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
 import ChatHeader from './ChatHeader'
 import OnlineUsers from './OnlineUsers'
-
-type OnlineUser = {
-  userId: string
-  username: string
-}
 
 type Props = {
   initialMessages: MessageWithProfile[]
@@ -160,8 +155,8 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
         const users: OnlineUser[] = []
 
         Object.keys(state).forEach((key) => {
-          const presences = state[key] as unknown as Array<{ userId: string; username: string }>
-          if (presences.length > 0) {
+          const presences = state[key]
+          if (presences.length > 0 && isOnlineUserPresence(presences[0])) {
             users.push({
               userId: presences[0].userId,
               username: presences[0].username,

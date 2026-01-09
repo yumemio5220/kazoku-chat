@@ -25,3 +25,23 @@ export type MessageRead = {
   user_id: string
   read_at: string
 }
+
+// Presence関連の型
+export type OnlineUser = {
+  userId: string
+  username: string
+}
+
+// 型ガード関数
+export function isOnlineUserPresence(
+  value: unknown
+): value is { userId: string; username: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'userId' in value &&
+    'username' in value &&
+    typeof (value as { userId: unknown }).userId === 'string' &&
+    typeof (value as { username: unknown }).username === 'string'
+  )
+}
