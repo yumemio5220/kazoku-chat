@@ -149,6 +149,23 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
       },
     })
 
+    const trackUser = async () => {
+      await presenceChannel.track({
+        userId: currentUser.id,
+        username: currentUser.username,
+      })
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // 復帰時にtrackし直す
+        trackUser()
+      } else {
+        // バックグラウンド時にuntrack
+        presenceChannel.untrack()
+      }
+    }
+
     presenceChannel
       .on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState()
@@ -168,14 +185,14 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await presenceChannel.track({
-            userId: currentUser.id,
-            username: currentUser.username,
-          })
+          await trackUser()
         }
       })
 
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       presenceChannel.untrack()
       supabase.removeChannel(presenceChannel)
     }
