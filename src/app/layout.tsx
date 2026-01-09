@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KAZOKUChat",
+  title: "🏠KAZOKUChat",
   description: "家族のためのチャットアプリ",
 };
 
