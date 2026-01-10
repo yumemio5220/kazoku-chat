@@ -156,6 +156,7 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
         await presenceChannel.track({
           userId: currentUser.id,
           username: currentUser.username,
+          avatarUrl: currentUser.avatar_url,
         })
       } catch (error) {
         console.error('Presence track error:', error, { userId: currentUser.id })
@@ -190,6 +191,7 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
             users.push({
               userId: presences[0].userId,
               username: presences[0].username,
+              avatarUrl: presences[0].avatarUrl,
             })
           }
         })
@@ -212,11 +214,11 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
       presenceChannel.untrack()
       supabase.removeChannel(presenceChannel)
     }
-  }, [supabase, currentUser.id, currentUser.username])
+  }, [supabase, currentUser.id, currentUser.username, currentUser.avatar_url])
 
   return (
     <div className="flex flex-col h-dvh bg-gray-100">
-      <ChatHeader username={currentUser.username} />
+      <ChatHeader username={currentUser.username} avatarUrl={currentUser.avatar_url} />
 
       {/* オンラインユーザー表示 */}
       <div className="bg-white border-b px-4 py-2">

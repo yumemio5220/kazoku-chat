@@ -30,12 +30,13 @@ export type MessageRead = {
 export type OnlineUser = {
   userId: string
   username: string
+  avatarUrl?: string | null
 }
 
 // 型ガード関数
 export function isOnlineUserPresence(
   value: unknown
-): value is { userId: string; username: string } {
+): value is { userId: string; username: string; avatarUrl?: string | null } {
   return (
     typeof value === 'object' &&
     value !== null &&
