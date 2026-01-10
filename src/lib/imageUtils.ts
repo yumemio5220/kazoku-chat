@@ -13,7 +13,14 @@ export async function resizeImage(
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 
-    reader.onload = (e) => {
+    reader.onload = (e: ProgressEvent<FileReader>) => {
+      const result = e.target?.result
+
+      if (typeof result !== 'string') {
+        reject(new Error('Invalid file data'))
+        return
+      }
+
       const img = new Image()
 
       img.onload = () => {
@@ -46,7 +53,7 @@ export async function resizeImage(
 
         // Blobに変換
         canvas.toBlob(
-          (blob) => {
+          (blob: Blob | null) => {
             if (blob) {
               resolve(blob)
             } else {
@@ -62,7 +69,7 @@ export async function resizeImage(
         reject(new Error('Failed to load image'))
       }
 
-      img.src = e.target?.result as string
+      img.src = result
     }
 
     reader.onerror = () => {
