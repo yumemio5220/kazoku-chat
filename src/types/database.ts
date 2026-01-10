@@ -37,12 +37,17 @@ export type OnlineUser = {
 export function isOnlineUserPresence(
   value: unknown
 ): value is { userId: string; username: string; avatarUrl?: string | null } {
+  const obj = value as { userId: unknown; username: unknown; avatarUrl?: unknown }
   return (
     typeof value === 'object' &&
     value !== null &&
     'userId' in value &&
     'username' in value &&
-    typeof (value as { userId: unknown }).userId === 'string' &&
-    typeof (value as { username: unknown }).username === 'string'
+    typeof obj.userId === 'string' &&
+    typeof obj.username === 'string' &&
+    (!('avatarUrl' in value) ||
+      obj.avatarUrl === null ||
+      obj.avatarUrl === undefined ||
+      typeof obj.avatarUrl === 'string')
   )
 }

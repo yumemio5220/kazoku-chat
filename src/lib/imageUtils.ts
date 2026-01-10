@@ -26,10 +26,10 @@ export async function resizeImage(
           return
         }
 
-        // 正方形にリサイズ
+        // 正方形にリサイズ（拡大は防止）
         const size = Math.min(img.width, img.height)
-        const scale = maxSize / size
-        const newSize = Math.min(size * scale, maxSize)
+        const scale = Math.min(1, maxSize / size) // 拡大防止
+        const newSize = size * scale
 
         canvas.width = newSize
         canvas.height = newSize

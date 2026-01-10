@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Profile } from '@/types/database'
 import { resizeImage, isImageFile, isFileSizeValid } from '@/lib/imageUtils'
 
 export default function ProfilePage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
+  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [username, setUsername] = useState('')
@@ -50,7 +51,17 @@ export default function ProfilePage() {
     }
 
     loadProfile()
-  }, [supabase, router])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase])
+
+  // タイムアウトのクリーンアップ
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // 画像ファイル選択時の処理
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,9 +113,15 @@ export default function ProfilePage() {
         // 古い画像を削除（存在する場合）
         if (profile.avatar_url) {
           try {
-            const oldPath = profile.avatar_url.split('/storage/v1/object/public/avatars/')[1]
-            if (oldPath) {
-              await supabase.storage.from('avatars').remove([oldPath])
+            const url = new URL(profile.avatar_url)
+            const pathname = url.pathname
+            const avatarsIndex = pathname.indexOf('/avatars/')
+
+            if (avatarsIndex !== -1) {
+              const storageKey = pathname.substring(avatarsIndex + '/avatars/'.length)
+              if (storageKey) {
+                await supabase.storage.from('avatars').remove([storageKey])
+              }
             }
           } catch (e) {
             console.log('古い画像の削除をスキップ:', e)
@@ -130,10 +147,11 @@ export default function ProfilePage() {
       }
 
       // プロフィール情報を更新
+      const trimmedUsername = username.trim()
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          username,
+          username: trimmedUsername,
           avatar_url: avatarUrl,
           updated_at: new Date().toISOString(),
         })
@@ -144,7 +162,10 @@ export default function ProfilePage() {
       setSuccess(true)
 
       // 2秒後にチャットページにリダイレクト
-      setTimeout(() => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current)
+      }
+      redirectTimeoutRef.current = setTimeout(() => {
         router.push('/')
         router.refresh()
       }, 2000)
