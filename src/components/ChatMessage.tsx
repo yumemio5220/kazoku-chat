@@ -5,9 +5,10 @@ import { MessageWithProfile } from '@/types/database'
 type Props = {
   message: MessageWithProfile
   isOwnMessage: boolean
+  onAvatarClick?: (imageUrl: string, username: string) => void
 }
 
-export default function ChatMessage({ message, isOwnMessage }: Props) {
+export default function ChatMessage({ message, isOwnMessage, onAvatarClick }: Props) {
   const formatTime = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleTimeString('ja-JP', {
@@ -25,7 +26,8 @@ export default function ChatMessage({ message, isOwnMessage }: Props) {
             <img
               src={message.profiles.avatar_url}
               alt={message.profiles.username}
-              className="w-8 h-8 rounded-full object-cover"
+              className="w-8 h-8 rounded-full object-cover cursor-pointer hover:opacity-80 transition"
+              onClick={() => onAvatarClick?.(message.profiles.avatar_url!, message.profiles.username)}
             />
           ) : (
             <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-600">

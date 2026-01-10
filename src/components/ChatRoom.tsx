@@ -7,6 +7,7 @@ import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
 import ChatHeader from './ChatHeader'
 import OnlineUsers from './OnlineUsers'
+import ImageModal from './ImageModal'
 
 type Props = {
   initialMessages: MessageWithProfile[]
@@ -16,8 +17,14 @@ type Props = {
 export default function ChatRoom({ initialMessages, currentUser }: Props) {
   const [messages, setMessages] = useState<MessageWithProfile[]>(initialMessages)
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
+  const [selectedImage, setSelectedImage] = useState<{ url: string; username: string } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const supabase = useMemo(() => createClient(), [])
+
+  // アバタークリック時の処理
+  const handleAvatarClick = useCallback((imageUrl: string, username: string) => {
+    setSelectedImage({ url: imageUrl, username })
+  }, [])
 
   // 自動スクロール
   const scrollToBottom = () => {
@@ -237,6 +244,7 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
               key={message.id}
               message={message}
               isOwnMessage={message.user_id === currentUser.id}
+              onAvatarClick={handleAvatarClick}
             />
           ))
         )}
@@ -244,6 +252,15 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
       </div>
 
       <ChatInput userId={currentUser.id} />
+
+      {/* 画像拡大モーダル */}
+      {selectedImage && (
+        <ImageModal
+          imageUrl={selectedImage.url}
+          username={selectedImage.username}
+          onClose={() => setSelectedImage(null)}
+        />
+      )}
     </div>
   )
 }
