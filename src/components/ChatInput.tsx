@@ -1,73 +1,23 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { RealtimeChannel } from '@supabase/supabase-js'
 
 type Props = {
   userId: string
-  presenceChannel?: RealtimeChannel
 }
 
-export default function ChatInput({ userId, presenceChannel }: Props) {
+export default function ChatInput({ userId }: Props) {
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const supabase = createClient()
-
-  // タイピング状態のクリーンアップ
-  useEffect(() => {
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  // 入力検知でPresenceを更新
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value
-    setMessage(newValue)
-
-    if (!presenceChannel) return
-
-    // 入力がある場合はisTypingをtrueに
-    if (newValue.length > 0) {
-      presenceChannel.track({ isTyping: true })
-
-      // 既存のタイマーをクリア
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current)
-      }
-
-      // 3秒後に自動でisTypingをfalseに
-      typingTimeoutRef.current = setTimeout(() => {
-        presenceChannel.track({ isTyping: false })
-      }, 3000)
-    } else {
-      // 入力が空になったらすぐにfalseに
-      presenceChannel.track({ isTyping: false })
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current)
-      }
-    }
-  }
 
   const sendMessage = async (content: string | null, fileUrl: string | null = null, fileType: string | null = null) => {
     if (!content && !fileUrl) return
 
     setSending(true)
-
-    // メッセージ送信前にisTypingをfalseに
-    if (presenceChannel) {
-      presenceChannel.track({ isTyping: false })
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current)
-      }
-    }
-
     const { error } = await supabase.from('messages').insert({
       user_id: userId,
       content,
@@ -165,7 +115,7 @@ export default function ChatInput({ userId, presenceChannel }: Props) {
         <input
           type="text"
           value={message}
-          onChange={handleInputChange}
+          onChange={(e) => setMessage(e.target.value)}
           placeholder={uploading ? 'アップロード中...' : 'メッセージを入力...'}
           disabled={uploading || sending}
           className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"

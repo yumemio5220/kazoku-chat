@@ -2,14 +2,12 @@
 
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { RealtimeChannel } from '@supabase/supabase-js'
 import { MessageWithProfile, Profile, OnlineUser, isOnlineUserPresence } from '@/types/database'
 import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
 import ChatHeader from './ChatHeader'
 import OnlineUsers from './OnlineUsers'
 import ImageModal from './ImageModal'
-import TypingIndicator from './TypingIndicator'
 
 type Props = {
   initialMessages: MessageWithProfile[]
@@ -20,7 +18,6 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
   const [messages, setMessages] = useState<MessageWithProfile[]>(initialMessages)
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const [selectedImage, setSelectedImage] = useState<{ url: string; username: string } | null>(null)
-  const [presenceChannel, setPresenceChannel] = useState<RealtimeChannel | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const supabase = useMemo(() => createClient(), [])
 
@@ -153,7 +150,7 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
   useEffect(() => {
     let visibilityTimeoutId: NodeJS.Timeout | null = null
 
-    const channel = supabase.channel('online-users', {
+    const presenceChannel = supabase.channel('online-users', {
       config: {
         presence: {
           key: currentUser.id,
@@ -161,16 +158,12 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
       },
     })
 
-    // stateに保存
-    setPresenceChannel(channel)
-
     const trackUser = async () => {
       try {
-        await channel.track({
+        await presenceChannel.track({
           userId: currentUser.id,
           username: currentUser.username,
           avatarUrl: currentUser.avatar_url,
-          isTyping: false,
         })
       } catch (error) {
         console.error('Presence track error:', error, { userId: currentUser.id })
@@ -189,14 +182,14 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
           trackUser()
         } else {
           // バックグラウンド時にuntrack
-          channel.untrack()
+          presenceChannel.untrack()
         }
       }, 300)
     }
 
-    channel
+    presenceChannel
       .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState()
+        const state = presenceChannel.presenceState()
         const users: OnlineUser[] = []
 
         Object.keys(state).forEach((key) => {
@@ -206,7 +199,6 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
               userId: presences[0].userId,
               username: presences[0].username,
               avatarUrl: presences[0].avatarUrl,
-              isTyping: presences[0].isTyping,
             })
           }
         })
@@ -226,9 +218,8 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
       if (visibilityTimeoutId) {
         clearTimeout(visibilityTimeoutId)
       }
-      channel.untrack()
-      supabase.removeChannel(channel)
-      setPresenceChannel(null)
+      presenceChannel.untrack()
+      supabase.removeChannel(presenceChannel)
     }
   }, [supabase, currentUser.id, currentUser.username, currentUser.avatar_url])
 
@@ -260,10 +251,7 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 入力中インジケーター */}
-      <TypingIndicator onlineUsers={onlineUsers} currentUserId={currentUser.id} />
-
-      <ChatInput userId={currentUser.id} presenceChannel={presenceChannel || undefined} />
+      <ChatInput userId={currentUser.id} />
 
       {/* 画像拡大モーダル */}
       {selectedImage && (
