@@ -31,13 +31,14 @@ export type OnlineUser = {
   userId: string
   username: string
   avatarUrl?: string | null
+  isTyping?: boolean
 }
 
 // 型ガード関数
 export function isOnlineUserPresence(
   value: unknown
-): value is { userId: string; username: string; avatarUrl?: string | null } {
-  const obj = value as { userId: unknown; username: unknown; avatarUrl?: unknown }
+): value is { userId: string; username: string; avatarUrl?: string | null; isTyping?: boolean } {
+  const obj = value as { userId: unknown; username: unknown; avatarUrl?: unknown; isTyping?: unknown }
   return (
     typeof value === 'object' &&
     value !== null &&
@@ -48,6 +49,9 @@ export function isOnlineUserPresence(
     (!('avatarUrl' in value) ||
       obj.avatarUrl === null ||
       obj.avatarUrl === undefined ||
-      typeof obj.avatarUrl === 'string')
+      typeof obj.avatarUrl === 'string') &&
+    (!('isTyping' in value) ||
+      obj.isTyping === undefined ||
+      typeof obj.isTyping === 'boolean')
   )
 }
