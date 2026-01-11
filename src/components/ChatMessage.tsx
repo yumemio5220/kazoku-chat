@@ -6,9 +6,10 @@ type Props = {
   message: MessageWithProfile
   isOwnMessage: boolean
   onAvatarClick?: (imageUrl: string, username: string) => void
+  onMediaClick?: (mediaUrl: string, mediaType: 'image' | 'video', username: string) => void
 }
 
-export default function ChatMessage({ message, isOwnMessage, onAvatarClick }: Props) {
+export default function ChatMessage({ message, isOwnMessage, onAvatarClick, onMediaClick }: Props) {
   const formatTime = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleTimeString('ja-JP', {
@@ -57,14 +58,16 @@ export default function ChatMessage({ message, isOwnMessage, onAvatarClick }: Pr
               <img
                 src={message.file_url}
                 alt="送信画像"
-                className="max-w-full rounded-lg mb-2"
+                className="max-w-full rounded-lg mb-2 cursor-pointer hover:opacity-90 transition"
+                onClick={() => onMediaClick?.(message.file_url!, 'image', message.profiles.username)}
               />
             )}
             {message.file_url && message.file_type === 'video' && (
               <video
                 src={message.file_url}
                 controls
-                className="max-w-full rounded-lg mb-2"
+                className="max-w-full rounded-lg mb-2 cursor-pointer"
+                onClick={() => onMediaClick?.(message.file_url!, 'video', message.profiles.username)}
               />
             )}
 

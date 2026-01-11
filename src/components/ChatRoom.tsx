@@ -17,13 +17,18 @@ type Props = {
 export default function ChatRoom({ initialMessages, currentUser }: Props) {
   const [messages, setMessages] = useState<MessageWithProfile[]>(initialMessages)
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
-  const [selectedImage, setSelectedImage] = useState<{ url: string; username: string } | null>(null)
+  const [selectedMedia, setSelectedMedia] = useState<{ url: string; username: string; type: 'image' | 'video' | 'avatar' } | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const supabase = useMemo(() => createClient(), [])
 
   // アバタークリック時の処理
   const handleAvatarClick = useCallback((imageUrl: string, username: string) => {
-    setSelectedImage({ url: imageUrl, username })
+    setSelectedMedia({ url: imageUrl, username, type: 'avatar' })
+  }, [])
+
+  // メディアクリック時の処理
+  const handleMediaClick = useCallback((mediaUrl: string, mediaType: 'image' | 'video', username: string) => {
+    setSelectedMedia({ url: mediaUrl, username, type: mediaType })
   }, [])
 
   // 自動スクロール
@@ -245,6 +250,7 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
               message={message}
               isOwnMessage={message.user_id === currentUser.id}
               onAvatarClick={handleAvatarClick}
+              onMediaClick={handleMediaClick}
             />
           ))
         )}
@@ -253,12 +259,13 @@ export default function ChatRoom({ initialMessages, currentUser }: Props) {
 
       <ChatInput userId={currentUser.id} />
 
-      {/* 画像拡大モーダル */}
-      {selectedImage && (
+      {/* メディア拡大モーダル */}
+      {selectedMedia && (
         <ImageModal
-          imageUrl={selectedImage.url}
-          username={selectedImage.username}
-          onClose={() => setSelectedImage(null)}
+          imageUrl={selectedMedia.url}
+          username={selectedMedia.username}
+          mediaType={selectedMedia.type}
+          onClose={() => setSelectedMedia(null)}
         />
       )}
     </div>

@@ -5,10 +5,11 @@ import { useEffect } from 'react'
 type Props = {
   imageUrl: string
   username: string
+  mediaType?: 'image' | 'video' | 'avatar'
   onClose: () => void
 }
 
-export default function ImageModal({ imageUrl, username, onClose }: Props) {
+export default function ImageModal({ imageUrl, username, mediaType = 'avatar', onClose }: Props) {
   // ESCキーで閉じる
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -51,12 +52,23 @@ export default function ImageModal({ imageUrl, username, onClose }: Props) {
           </svg>
         </button>
 
-        {/* 画像 */}
-        <img
-          src={imageUrl}
-          alt={`${username}のアバター`}
-          className="w-full h-full object-contain rounded-lg"
-        />
+        {/* メディア表示 */}
+        {mediaType === 'video' ? (
+          <video
+            src={imageUrl}
+            controls
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-contain rounded-lg max-h-[80vh]"
+          />
+        ) : (
+          <img
+            src={imageUrl}
+            alt={mediaType === 'avatar' ? `${username}のアバター` : '送信画像'}
+            className="w-full h-full object-contain rounded-lg"
+          />
+        )}
 
         {/* ユーザー名 */}
         <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-4 rounded-b-lg">
