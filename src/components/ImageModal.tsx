@@ -58,6 +58,8 @@ export default function ImageModal({ imageUrl, username, mediaType = 'avatar', o
             src={imageUrl}
             controls
             autoPlay
+            muted
+            playsInline
             className="w-full h-full object-contain rounded-lg max-h-[80vh]"
           />
         ) : (

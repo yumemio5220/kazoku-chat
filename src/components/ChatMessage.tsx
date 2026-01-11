@@ -65,6 +65,7 @@ export default function ChatMessage({ message, isOwnMessage, onAvatarClick, onMe
             {message.file_url && message.file_type === 'video' && (
               <video
                 src={message.file_url}
+                controls
                 className="max-w-full rounded-lg mb-2 cursor-pointer"
                 onClick={() => onMediaClick?.(message.file_url!, 'video', message.profiles.username)}
               />
